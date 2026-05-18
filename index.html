@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Flow Diagram</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;background:#f5f5f7;color:#1d1d1f;font-size:13px;overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100vh}
+  #toolbar{display:flex;align-items:center;gap:4px;padding:8px 12px;background:#fff;border-bottom:1px solid #e5e5e7;flex-wrap:wrap}
+  #toolbar .group{display:flex;align-items:center;gap:4px;padding:0 8px;border-right:1px solid #ececec}
+  #toolbar .group:last-child{border-right:none}
+  #toolbar .group:first-child{padding-left:0}
+  button.tool{border:1px solid #d9d9dc;background:#fafafa;color:#1d1d1f;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;line-height:1;transition:background .12s,border-color .12s}
+  button.tool:hover{background:#f0f0f2;border-color:#c4c4c7}
+  button.tool:active{background:#e8e8eb}
+  button.tool:disabled{opacity:.4;cursor:not-allowed}
+  button.tool.danger:hover{background:#fdecec;border-color:#e89999;color:#b42323}
+  button.tool.primary{background:#1d6fff;color:#fff;border-color:#1d6fff}
+  button.tool.primary:hover{background:#155fdb;border-color:#155fdb}
+  button.tool.toggled{background:#e8f0ff;border-color:#1d6fff;color:#1d6fff}
+  .color-swatch{width:22px;height:22px;border-radius:50%;border:1px solid #d9d9dc;cursor:pointer;padding:0;display:inline-block}
+  .color-swatch.active{box-shadow:0 0 0 2px #fff,0 0 0 3px #1d1d1f}
+  .label{font-size:11px;color:#86868b;margin-right:2px}
+  select.tool{border:1px solid #d9d9dc;background:#fafafa;color:#1d1d1f;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px}
+  input.size-input{border:1px solid #d9d9dc;background:#fafafa;color:#1d1d1f;padding:5px 6px;border-radius:6px;font-size:12px;width:55px;text-align:center;font-family:inherit}
+  input.size-input:focus{border-color:#1d6fff;outline:none;box-shadow:0 0 0 2px rgba(29,111,255,.15)}
+  .size-x{font-size:11px;color:#86868b;margin:0 2px}
+  #canvas-wrap{flex:1;overflow:auto;background:#f5f5f7;position:relative;padding:24px;box-sizing:border-box;}
+  #canvas{display:block;background:#fff;margin:0 auto;box-shadow:0 1px 2px rgba(0,0,0,.04),0 0 0 1px #e5e5e7;background-image:radial-gradient(circle,#e8e8eb 1px,transparent 1px);background-size:20px 20px;}
+  .node-shape{stroke:#c4c4c7;stroke-width:1.2;transition:stroke .1s}
+  .node-group.selected .node-shape{stroke:#1d6fff;stroke-width:2}
+  .node-group{cursor:move}
+  .node-text,.memo-text{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    pointer-events:none;
+    user-select:none
+  }
+  .node-text{font-size:13px;dominant-baseline:middle;text-anchor:middle}
+  .edge-path{stroke:#6e6e73;stroke-width:1.4;fill:none}
+  .edge-path.selected{stroke:#1d6fff;stroke-width:2.2}
+  .edge-hit{stroke:transparent;stroke-width:14;fill:none;cursor:pointer}
+  .conn-handle{fill:#fff;stroke:#1d6fff;stroke-width:1.5;cursor:crosshair;opacity:0;transition:opacity .1s}
+  .node-group:hover .conn-handle,.node-group.selected .conn-handle{opacity:1}
+  .conn-handle:hover{fill:#1d6fff}
+  .resize-handle{fill:#fff;stroke:#1d6fff;stroke-width:1.5;pointer-events:all}
+  .resize-handle.nw{cursor:nw-resize}.resize-handle.n{cursor:n-resize}.resize-handle.ne{cursor:ne-resize}
+  .resize-handle.e{cursor:e-resize}.resize-handle.se{cursor:se-resize}.resize-handle.s{cursor:s-resize}
+  .resize-handle.sw{cursor:sw-resize}.resize-handle.w{cursor:w-resize}
+  .memo-group{cursor:move}
+  .memo-bg{fill:transparent;stroke:transparent;stroke-width:1}
+  .memo-group.selected .memo-bg{stroke:#1d6fff;stroke-dasharray:4 3;fill:rgba(29,111,255,.03)}
+  .memo-text{dominant-baseline:hanging}
+  #edit-overlay{position:fixed;display:none;border:1px solid #1d6fff;border-radius:4px;padding:6px 8px;font-family:inherit;background:#fff;color:#1d1d1f;outline:none;resize:none;box-shadow:0 2px 8px rgba(0,0,0,.12);z-index:100;line-height:1.4;overflow:hidden}
+  #context-menu{position:fixed;display:none;background:#fff;border:1px solid #d9d9dc;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:4px;min-width:160px;z-index:200}
+  #context-menu button{display:block;width:100%;text-align:left;background:none;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#1d1d1f}
+  #context-menu button:hover{background:#f0f0f2}
+  #context-menu button.danger:hover{background:#fdecec;color:#b42323}
+  #context-menu .sep{height:1px;background:#ececec;margin:4px 2px}
+  #hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(29,29,31,.85);color:#fff;padding:6px 14px;border-radius:14px;font-size:11px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:300}
+  #hint.show{opacity:1}
+  #file-input{display:none}
+  #memo-tools{display:none}
+  #memo-tools.visible{display:flex}
+  #edge-color-tools{display:none}
+  #edge-color-tools.visible{display:flex}
+  #align-tools{display:none}
+  #align-tools.visible{display:flex}
+  .select-rect{fill:rgba(29,111,255,.08);stroke:#1d6fff;stroke-width:1;stroke-dasharray:4 3;pointer-events:none}
+  #fn-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);display:none;align-items:center;justify-content:center;z-index:400}
+  #fn-overlay.show{display:flex}
+  #fn-dialog{background:#fff;border-radius:10px;padding:20px 24px;box-shadow:0 8px 32px rgba(0,0,0,.18);min-width:320px}
+  #fn-dialog h3{font-size:14px;font-weight:600;margin-bottom:12px;color:#1d1d1f}
+  #fn-input{width:100%;border:1px solid #d9d9dc;border-radius:6px;padding:8px 10px;font-size:13px;outline:none;font-family:inherit}
+  #fn-input:focus{border-color:#1d6fff;box-shadow:0 0 0 2px rgba(29,111,255,.15)}
+  #fn-btns{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+  #fn-btns button{padding:7px 16px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid #d9d9dc;background:#fafafa;color:#1d1d1f}
+  #fn-btns button.primary{background:#1d6fff;color:#fff;border-color:#1d6fff}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <div class="group">
+      <button class="tool" data-action="add-process">＋ 프로세스</button>
+      <button class="tool" data-action="add-decision">◇ 판단</button>
+      <button class="tool" data-action="add-start-end">○ 시작/종료</button>
+      <button class="tool" data-action="add-memo">✎ 메모</button>
+    </div>
+
+    <div class="group">
+      <span class="label">색상</span>
+      <button class="color-swatch active" data-color="#fafafa" style="background:#fafafa" title="기본"></button>
+      <button class="color-swatch" data-color="#e3f2fd" style="background:#e3f2fd" title="블루"></button>
+      <button class="color-swatch" data-color="#e8f5e9" style="background:#e8f5e9" title="그린"></button>
+      <button class="color-swatch" data-color="#fff8e1" style="background:#fff8e1" title="옐로"></button>
+      <button class="color-swatch" data-color="#fce4ec" style="background:#fce4ec" title="핑크"></button>
+      <button class="color-swatch" data-color="#ede7f6" style="background:#ede7f6" title="퍼플"></button>
+    </div>
+
+    <div class="group">
+      <span class="label">글자색</span>
+      <button class="color-swatch text-color-swatch active" data-text-color="#1d1d1f" style="background:#1d1d1f" title="기본"></button>
+      <button class="color-swatch text-color-swatch" data-text-color="#6e6e73" style="background:#6e6e73" title="회색"></button>
+      <button class="color-swatch text-color-swatch" data-text-color="#1d6fff" style="background:#1d6fff" title="블루"></button>
+      <button class="color-swatch text-color-swatch" data-text-color="#d14343" style="background:#d14343" title="레드"></button>
+    </div>
+
+    <div class="group">
+      <span class="label">연결선</span>
+      <button class="tool toggled" id="btn-line-straight">직선</button>
+      <button class="tool" id="btn-line-ortho">꺾인선</button>
+    </div>
+
+    <div class="group" id="edge-color-tools">
+      <span class="label">선 색상</span>
+      <button class="color-swatch edge-color-swatch active" data-edge-color="#6e6e73" style="background:#6e6e73" title="기본"></button>
+      <button class="color-swatch edge-color-swatch" data-edge-color="#1d6fff" style="background:#1d6fff" title="블루"></button>
+      <button class="color-swatch edge-color-swatch" data-edge-color="#d32f2f" style="background:#d32f2f" title="레드"></button>
+      <button class="color-swatch edge-color-swatch" data-edge-color="#2e7d32" style="background:#2e7d32" title="그린"></button>
+      <button class="color-swatch edge-color-swatch" data-edge-color="#f57c00" style="background:#f57c00" title="오렌지"></button>
+    </div>
+
+    <div class="group" id="memo-tools">
+      <span class="label">글자크기</span>
+      <select class="tool" id="memo-fontsize">
+        <option value="12">12</option>
+        <option value="14" selected>14</option>
+        <option value="16">16</option>
+        <option value="20">20</option>
+        <option value="24">24</option>
+      </select>
+    </div>
+
+    <div class="group">
+      <span class="label">캔버스</span>
+      <input class="size-input" id="canvas-w" type="number" value="3200" min="800" max="9999" step="100"/>
+      <span class="size-x">×</span>
+      <input class="size-input" id="canvas-h" type="number" value="2000" min="600" max="9999" step="100"/>
+      <button class="tool" id="btn-canvas-apply">적용</button>
+    </div>
+
+    <div class="group" id="align-tools">
+      <span class="label">정렬</span>
+      <button class="tool" data-align="left" title="왼쪽 정렬">◧</button>
+      <button class="tool" data-align="center-h" title="가로 중앙">⫐</button>
+      <button class="tool" data-align="right" title="오른쪽 정렬">◨</button>
+      <button class="tool" data-align="top" title="위 정렬">⊤</button>
+      <button class="tool" data-align="center-v" title="세로 중앙">⊶</button>
+      <button class="tool" data-align="bottom" title="아래 정렬">⊥</button>
+      <button class="tool" data-align="dist-h" title="가로 균등 분배">⇔</button>
+      <button class="tool" data-align="dist-v" title="세로 균등 분배">⇕</button>
+    </div>
+
+    <div class="group">
+      <button class="tool" id="btn-undo" title="Ctrl+Z">↶ Undo</button>
+      <button class="tool" id="btn-redo" title="Ctrl+Y">↷ Redo</button>
+    </div>
+
+    <div class="group">
+      <button class="tool danger" id="btn-clear">전체 삭제</button>
+    </div>
+
+    <div class="group" style="margin-left:auto;border-right:none">
+      <button class="tool" id="btn-save-json">JSON 저장</button>
+      <button class="tool" id="btn-load-json">JSON 불러오기</button>
+      <button class="tool primary" id="btn-export-png">PNG 저장</button>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <svg id="canvas" width="3200" height="2000" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6e6e73"/>
+        </marker>
+        <marker id="arrow-sel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#1d6fff"/>
+        </marker>
+        <marker id="arrow-c-1d6fff" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#1d6fff"/>
+        </marker>
+        <marker id="arrow-c-d32f2f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#d32f2f"/>
+        </marker>
+        <marker id="arrow-c-2e7d32" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#2e7d32"/>
+        </marker>
+        <marker id="arrow-c-f57c00" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f57c00"/>
+        </marker>
+      </defs>
+      <g id="layer-edges"></g>
+      <g id="layer-nodes"></g>
+      <g id="layer-memos"></g>
+      <g id="layer-handles"></g>
+      <g id="layer-overlay"></g>
+    </svg>
+  </div>
+
+  <textarea id="edit-overlay" spellcheck="false"></textarea>
+  <div id="context-menu"></div>
+  <div id="hint"></div>
+  <input id="file-input" type="file" accept=".json,application/json"/>
+</div>
+
+<div id="fn-overlay">
+  <div id="fn-dialog">
+    <h3>JSON 파일명 입력</h3>
+    <input id="fn-input" type="text" placeholder="예: 로그인_프로세스"/>
+    <div id="fn-btns">
+      <button id="fn-cancel">취소</button>
+      <button id="fn-ok" class="primary">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const state = {
+  nodes:{},
+  edges:{},
+  memos:{},
+  selected:null,
+  currentColor:'#fafafa',
+  currentTextColor:'#1d1d1f',
+  lineMode:'straight',
+  nextId:1,
+  lastJsonFileName:'',
+  panMode:false,
+  selectedItems:[]
+};
+
+const hist={past:[],future:[],MAX:100};
+const clipboard={data:null};
+
+const MIN_W=60,MIN_H=36;
+const MEMO_DEF_W=220,MEMO_DEF_FONT=14,MEMO_PAD=6,MEMO_LH=1.4;
+let CW=3200,CH=2000;
+
+const $svg=document.getElementById('canvas');
+const $edges=document.getElementById('layer-edges');
+const $nodes=document.getElementById('layer-nodes');
+const $memos=document.getElementById('layer-memos');
+const $hdls=document.getElementById('layer-handles');
+const $over=document.getElementById('layer-overlay');
+const $edit=document.getElementById('edit-overlay');
+const $ctx=document.getElementById('context-menu');
+const $memoT=document.getElementById('memo-tools');
+const $memoFS=document.getElementById('memo-fontsize');
+const $cw=document.getElementById('canvas-w');
+const $ch=document.getElementById('canvas-h');
+const $fnOverlay=document.getElementById('fn-overlay');
+const $fnInput=document.getElementById('fn-input');
+const $fnOk=document.getElementById('fn-ok');
+const $fnCancel=document.getElementById('fn-cancel');
+const $fileIn=document.getElementById('file-input');
+const $lnS=document.getElementById('btn-line-straight');
+const $lnO=document.getElementById('btn-line-ortho');
+
+let interaction=null,lastClickTime=0,lastClickId=null,editing=null;
+const DBL_MS=400,DRAG_TH=4;
+
+function uid(p){return p+'_'+(state.nextId++);}
+function svgNS(t){return document.createElementNS('http://www.w3.org/2000/svg',t);}
+function showHint(msg,ms){
+  const h=document.getElementById('hint');
+  h.textContent=msg;
+  h.classList.add('show');
+  clearTimeout(showHint._t);
+  showHint._t=setTimeout(()=>h.classList.remove('show'),ms||1800);
+}
+function c2s(cx,cy){
+  const r=$svg.getBoundingClientRect();
+  return {
+    x:(cx-r.left)*(CW/r.width),
+    y:(cy-r.top)*(CH/r.height)
+  };
+}
+function snap(){
+  return JSON.parse(JSON.stringify({
+    nodes:state.nodes,
+    edges:state.edges,
+    memos:state.memos,
+    nextId:state.nextId
+  }));
+}
+function pushH(){
+  hist.past.push(snap());
+  if(hist.past.length>hist.MAX)hist.past.shift();
+  hist.future=[];
+  updUB();
+}
+function applySn(s){
+  state.nodes=s.nodes||{};
+  state.edges=s.edges||{};
+  state.memos=s.memos||{};
+  state.nextId=s.nextId||1;
+  state.selected=null;
+  state.selectedItems=[];
+  render();
+}
+function undo(){
+  if(!hist.past.length)return;
+  hist.future.push(snap());
+  applySn(hist.past.pop());
+  updUB();
+}
+function redo(){
+  if(!hist.future.length)return;
+  hist.past.push(snap());
+  applySn(hist.future.pop());
+  updUB();
+}
+function updUB(){
+  document.getElementById('btn-undo').disabled=!hist.past.length;
+  document.getElementById('btn-redo').disabled=!hist.future.length;
+}
+function isOnlySelected(kind,id){
+  return state.selectedItems.length===1 &&
+    state.selectedItems[0].kind===kind &&
+    state.selectedItems[0].id===id;
+}
+function toggleSelect(kind,id){
+  const idx = state.selectedItems.findIndex(s => s.kind===kind && s.id===id);
+  if(idx >= 0){
+    state.selectedItems.splice(idx,1);
+    if(state.selected && state.selected.kind===kind && state.selected.id===id){
+      state.selected = state.selectedItems.length
+        ? {...state.selectedItems[state.selectedItems.length-1]}
+        : null;
+    }
+  }else{
+    state.selectedItems.push({kind,id});
+    state.selected = {kind,id};
+  }
+}
+function hideCtx(){ $ctx.style.display='none'; }
+
+function setLineMode(m){
+  // 선택된 edge가 있으면 그 edge만 변경
+  if(state.selected && state.selected.kind==='edge' && state.edges[state.selected.id]){
+    pushH();
+    state.edges[state.selected.id].lineMode=m;
+  }
+  // 새로 그릴 화살표의 기본값도 변경
+  state.lineMode=m;
+  $lnS.classList.toggle('toggled',m==='straight');
+  $lnO.classList.toggle('toggled',m==='ortho');
+  render();
+}
+
+function setColor(id,c){
+  pushH();
+  if(state.nodes[id]) state.nodes[id].color=c;
+  render();
+}
+function setTextColor(kind,id,color){
+  if(!id) return;
+  pushH();
+  if(kind==='node' && state.nodes[id]) state.nodes[id].textColor = color;
+  if(kind==='memo' && state.memos[id]) state.memos[id].textColor = color;
+  render();
+}
+
+function wrapText(text,max){
+  const out=[];
+  for(const para of String(text||'').split('\n')){
+    if(!para.length){ out.push(''); continue; }
+    const words=para.split(/(\s+)/);
+    let line='';
+    for(const w of words){
+      if((line+w).length<=max){ line+=w; }
+      else{
+        if(line.length) out.push(line.replace(/\s+$/,''));
+        if(w.length>max){
+          let chunk='';
+          for(const ch of w){
+            if((chunk+ch).length>max){ out.push(chunk); chunk=ch; }
+            else chunk+=ch;
+          }
+          line=chunk;
+        }else{
+          line=w.replace(/^\s+/,'');
+        }
+      }
+    }
+    if(line.length) out.push(line);
+  }
+  return out.length?out:[''];
+}
+function measMemo(text,fs,maxW){
+  const cw=fs*0.6;
+  const mc=Math.max(8,Math.floor((maxW-MEMO_PAD*2)/cw));
+  const lines=wrapText(text,mc);
+  const lh=fs*MEMO_LH;
+  let ml=0;
+  for(const l of lines) ml=Math.max(ml,l.length);
+  const contentW=Math.min(maxW,Math.max(60,ml*cw));
+  return {
+    w:Math.ceil(contentW+MEMO_PAD*2),
+    h:Math.ceil(lines.length*lh+MEMO_PAD*2),
+    lines,
+    lh
+  };
+}
+
+/* Node / Memo ops */
+function addNode(type,x,y){
+  pushH();
+  let w,h,text;
+  if(type==='process'){w=140;h=60;text='프로세스';}
+  else if(type==='decision'){w=140;h=80;text='판단?';}
+  else{w=120;h=50;text='시작';}
+
+  const id=uid('n');
+  state.nodes[id]={
+    id,type,x:x-w/2,y:y-h/2,w,h,text,
+    color:state.currentColor,
+    textColor:state.currentTextColor
+  };
+  state.selected={kind:'node',id};
+  state.selectedItems=[{kind:'node',id}];
+  render();
+}
+function addMemo(x,y){
+  pushH();
+  const id=uid('m');
+  const text='메모를 입력하세요';
+  const fs=MEMO_DEF_FONT;
+  const d=measMemo(text,fs,MEMO_DEF_W);
+  state.memos[id]={
+    id,x:x-d.w/2,y:y-d.h/2,w:d.w,h:d.h,text,fontSize:fs,
+    textColor:state.currentTextColor
+  };
+  state.selected={kind:'memo',id};
+  state.selectedItems=[{kind:'memo',id}];
+  render();
+  openEditor('memo',id,true);
+}
+function delNode(id){
+  pushH();
+  for(const eid of Object.keys(state.edges)){
+    if(state.edges[eid].from===id || state.edges[eid].to===id) delete state.edges[eid];
+  }
+  delete state.nodes[id];
+  state.selected=null;
+  state.selectedItems=state.selectedItems.filter(s=>!(s.kind==='node'&&s.id===id));
+  render();
+}
+function delMemo(id){
+  pushH();
+  delete state.memos[id];
+  state.selected=null;
+  state.selectedItems=state.selectedItems.filter(s=>!(s.kind==='memo'&&s.id===id));
+  render();
+}
+function delEdge(id){
+  pushH();
+  delete state.edges[id];
+  state.selected=null;
+  render();
+}
+function setMemoFS(id,fs){
+  pushH();
+  const m=state.memos[id];
+  if(!m)return;
+  m.fontSize=fs;
+  const d=measMemo(m.text,fs,m.w);
+  m.h=d.h;
+  render();
+}
+
+/* Copy / Paste */
+function copySelected(){
+  // 멀티 선택이 있으면 전체 복사
+  const items=state.selectedItems.length ? state.selectedItems
+    : (state.selected && (state.selected.kind==='node'||state.selected.kind==='memo')) ? [state.selected]
+    : [];
+  if(!items.length) return;
+
+  const nodeIds=new Set(), memoIds=new Set();
+  const nodes=[], memos=[], edges=[];
+
+  for(const sel of items){
+    if(sel.kind==='node' && state.nodes[sel.id]){
+      nodeIds.add(sel.id);
+      nodes.push(JSON.parse(JSON.stringify(state.nodes[sel.id])));
+    }
+    if(sel.kind==='memo' && state.memos[sel.id]){
+      memoIds.add(sel.id);
+      memos.push(JSON.parse(JSON.stringify(state.memos[sel.id])));
+    }
+  }
+  // 선택된 노드들 사이의 연결선도 복사
+  for(const e of Object.values(state.edges)){
+    if(nodeIds.has(e.from) && nodeIds.has(e.to)){
+      edges.push(JSON.parse(JSON.stringify(e)));
+    }
+  }
+
+  clipboard.data={kind:'multi', nodes, memos, edges, offset:20};
+  const cnt=nodes.length+memos.length;
+  showHint(`${cnt}개 복사됨 (Ctrl+V로 붙여넣기)`);
+}
+
+function pasteClipboard(){
+  if(!clipboard.data) return;
+  pushH();
+  const offset=clipboard.data.offset||20;
+
+  if(clipboard.data.kind==='multi'){
+    const idMap={};
+    state.selectedItems=[];
+
+    // 노드 붙여넣기
+    for(const src of clipboard.data.nodes){
+      const newId=uid('n');
+      idMap[src.id]=newId;
+      state.nodes[newId]={...src, id:newId, x:src.x+offset, y:src.y+offset};
+      state.selectedItems.push({kind:'node',id:newId});
+    }
+    // 메모 붙여넣기
+    for(const src of clipboard.data.memos){
+      const newId=uid('m');
+      idMap[src.id]=newId;
+      state.memos[newId]={...src, id:newId, x:src.x+offset, y:src.y+offset};
+      state.selectedItems.push({kind:'memo',id:newId});
+    }
+    // 연결선 붙여넣기 (ID 매핑)
+    for(const src of clipboard.data.edges){
+      const newFrom=idMap[src.from], newTo=idMap[src.to];
+      if(newFrom && newTo){
+        const newId=uid('e');
+        state.edges[newId]={...src, id:newId, from:newFrom, to:newTo};
+      }
+    }
+    // 원본 위치 offset 누적 (연속 붙여넣기)
+    for(const src of clipboard.data.nodes) { src.x+=offset; src.y+=offset; }
+    for(const src of clipboard.data.memos) { src.x+=offset; src.y+=offset; }
+
+    if(state.selectedItems.length) state.selected=state.selectedItems[state.selectedItems.length-1];
+  }
+
+  render();
+  const cnt=(clipboard.data.nodes?.length||0)+(clipboard.data.memos?.length||0);
+  showHint(`${cnt}개 붙여넣기 완료`);
+}
+
+/* Render */
+function render(){
+  $edges.innerHTML='';
+  $nodes.innerHTML='';
+  $memos.innerHTML='';
+  $hdls.innerHTML='';
+
+  for(const e of Object.values(state.edges)) renderEdge(e);
+  for(const n of Object.values(state.nodes)) renderNode(n);
+  for(const m of Object.values(state.memos)) renderMemo(m);
+
+  if(state.selected && state.selected.kind==='node' && isOnlySelected('node',state.selected.id)){
+    renderResizeHandles(state.nodes[state.selected.id],'node');
+  }
+  if(state.selected && state.selected.kind==='memo' && isOnlySelected('memo',state.selected.id)){
+    renderResizeHandles(state.memos[state.selected.id],'memo');
+  }
+  updMemoTools();
+  syncTextColorUI();
+  // 선택된 edge가 있으면 툴바 연결선 버튼을 해당 edge의 lineMode로 동기화
+  const $ecTools=document.getElementById('edge-color-tools');
+  if(state.selected && state.selected.kind==='edge' && state.edges[state.selected.id]){
+    const em=state.edges[state.selected.id].lineMode||'straight';
+    $lnS.classList.toggle('toggled',em==='straight');
+    $lnO.classList.toggle('toggled',em==='ortho');
+    // edge 색상 툴바 표시 + 동기화
+    $ecTools.classList.add('visible');
+    const ec=state.edges[state.selected.id].color||'#6e6e73';
+    document.querySelectorAll('.edge-color-swatch').forEach(sw=>{
+      sw.classList.toggle('active',sw.dataset.edgeColor===ec);
+    });
+  } else {
+    $lnS.classList.toggle('toggled',state.lineMode==='straight');
+    $lnO.classList.toggle('toggled',state.lineMode==='ortho');
+    $ecTools.classList.remove('visible');
+  }
+  // 정렬 툴바: 2개 이상 선택 시 표시
+  const $alignT=document.getElementById('align-tools');
+  $alignT.classList.toggle('visible', state.selectedItems.length>=2);
+}
+function renderNode(node){
+  const g=svgNS('g');
+  g.classList.add('node-group');
+  g.dataset.id=node.id;
+
+  const selected = state.selectedItems.some(s => s.kind==='node' && s.id===node.id);
+  if(selected) g.classList.add('selected');
+
+  let shape;
+  if(node.type==='process'){
+    shape=svgNS('rect');
+    shape.setAttribute('x',node.x);
+    shape.setAttribute('y',node.y);
+    shape.setAttribute('width',node.w);
+    shape.setAttribute('height',node.h);
+    shape.setAttribute('rx',6);
+    shape.setAttribute('ry',6);
+  }else if(node.type==='decision'){
+    shape=svgNS('polygon');
+    const cx=node.x+node.w/2, cy=node.y+node.h/2;
+    shape.setAttribute('points',`${cx},${node.y} ${node.x+node.w},${cy} ${cx},${node.y+node.h} ${node.x},${cy}`);
+  }else{
+    shape=svgNS('rect');
+    shape.setAttribute('x',node.x);
+    shape.setAttribute('y',node.y);
+    shape.setAttribute('width',node.w);
+    shape.setAttribute('height',node.h);
+    shape.setAttribute('rx',node.h/2);
+    shape.setAttribute('ry',node.h/2);
+  }
+  shape.classList.add('node-shape');
+  shape.setAttribute('fill',node.color||'#fafafa');
+  g.appendChild(shape);
+
+  const text=svgNS('text');
+  text.classList.add('node-text');
+  text.setAttribute('x',node.x+node.w/2);
+  text.setAttribute('y',node.y+node.h/2);
+  text.style.fill = node.textColor || '#1d1d1f';
+
+  const lines=String(node.text||'').split('\n');
+  const lh=16,total=lines.length;
+  for(let i=0;i<lines.length;i++){
+    const ts=svgNS('tspan');
+    ts.setAttribute('x',node.x+node.w/2);
+    ts.setAttribute('dy',i===0 ? -((total-1)*lh)/2 : lh);
+    ts.textContent=lines[i]||' ';
+    text.appendChild(ts);
+  }
+  g.appendChild(text);
+
+  const cx=node.x+node.w/2,cy=node.y+node.h/2;
+  [
+    {x:cx,y:node.y,side:'top'},
+    {x:node.x+node.w,y:cy,side:'right'},
+    {x:cx,y:node.y+node.h,side:'bottom'},
+    {x:node.x,y:cy,side:'left'}
+  ].forEach(hp=>{
+    const c=svgNS('circle');
+    c.setAttribute('cx',hp.x);
+    c.setAttribute('cy',hp.y);
+    c.setAttribute('r',5);
+    c.classList.add('conn-handle');
+    c.dataset.nodeId=node.id;
+    c.dataset.side=hp.side;
+    g.appendChild(c);
+  });
+
+  $nodes.appendChild(g);
+}
+function renderMemo(memo){
+  const d=measMemo(memo.text,memo.fontSize,memo.w);
+  const g=svgNS('g');
+  g.classList.add('memo-group');
+  g.dataset.id=memo.id;
+
+  const selected = state.selectedItems.some(s => s.kind==='memo' && s.id===memo.id);
+  if(selected) g.classList.add('selected');
+
+  const bg=svgNS('rect');
+  bg.setAttribute('x',memo.x);
+  bg.setAttribute('y',memo.y);
+  bg.setAttribute('width',memo.w);
+  bg.setAttribute('height',memo.h);
+  bg.setAttribute('rx',3);
+  bg.classList.add('memo-bg');
+  g.appendChild(bg);
+
+  const text=svgNS('text');
+  text.classList.add('memo-text');
+  text.setAttribute('x',memo.x+MEMO_PAD);
+  text.setAttribute('y',memo.y+MEMO_PAD);
+  text.setAttribute('font-size',memo.fontSize);
+  text.style.fill = memo.textColor || '#3a3a3c';
+
+  for(let i=0;i<d.lines.length;i++){
+    const ts=svgNS('tspan');
+    ts.setAttribute('x',memo.x+MEMO_PAD);
+    ts.setAttribute('dy',i===0?0:d.lh);
+    ts.textContent=d.lines[i].length?d.lines[i]:' ';
+    text.appendChild(ts);
+  }
+  g.appendChild(text);
+
+  $memos.appendChild(g);
+}
+function renderResizeHandles(obj,kind){
+  if(!obj)return;
+  const x=obj.x,y=obj.y,w=obj.w,h=obj.h,sz=4;
+  [
+    {cx:x,cy:y,dir:'nw'},{cx:x+w/2,cy:y,dir:'n'},{cx:x+w,cy:y,dir:'ne'},{cx:x+w,cy:y+h/2,dir:'e'},
+    {cx:x+w,cy:y+h,dir:'se'},{cx:x+w/2,cy:y+h,dir:'s'},{cx:x,cy:y+h,dir:'sw'},{cx:x,cy:y+h/2,dir:'w'}
+  ].forEach(p=>{
+    const r=svgNS('rect');
+    r.setAttribute('x',p.cx-sz);
+    r.setAttribute('y',p.cy-sz);
+    r.setAttribute('width',sz*2);
+    r.setAttribute('height',sz*2);
+    r.classList.add('resize-handle',p.dir);
+    r.dataset.nodeId=obj.id;
+    r.dataset.dir=p.dir;
+    r.dataset.resizeKind=kind||'node';
+    $hdls.appendChild(r);
+  });
+}
+function renderEdge(edge){
+  const from=state.nodes[edge.from], to=state.nodes[edge.to];
+  if(!from||!to)return;
+
+  // side가 지정되어 있으면 해당 side에서 출발/도착, 아니면 자동 계산
+  const p1 = edge.fromSide ? sidePoint(from, edge.fromSide) : edgePt(from, to);
+  const p2 = edge.toSide   ? sidePoint(to, edge.toSide)     : edgePt(to, from);
+
+  let pathD;
+  const mode = edge.lineMode || 'straight';
+  if(mode==='ortho'){
+    if(edge.fromSide || edge.toSide) pathD=orthoPathPts(from, to, p1, p2, edge.fromSide, edge.toSide);
+    else pathD=orthoPath(from, to);
+  }
+  else{
+    pathD=`M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+  }
+
+  const hit=svgNS('path');
+  hit.setAttribute('d',pathD);
+  hit.classList.add('edge-hit');
+  hit.dataset.id=edge.id;
+  $edges.appendChild(hit);
+
+  const path=svgNS('path');
+  path.setAttribute('d',pathD);
+  path.classList.add('edge-path');
+  path.dataset.id=edge.id;
+  const sel=state.selected&&state.selected.kind==='edge'&&state.selected.id===edge.id;
+  if(sel) path.classList.add('selected');
+  const edgeColor=edge.color||'#6e6e73';
+  if(sel){
+    path.setAttribute('marker-end','url(#arrow-sel)');
+  }else{
+    // 라인 색상 직접 적용 (CSS 오버라이드)
+    path.style.stroke=edgeColor;
+    if(edgeColor!=='#6e6e73'){
+      const markerId='arrow-c-'+edgeColor.replace('#','');
+      path.setAttribute('marker-end','url(#'+markerId+')');
+    }else{
+      path.setAttribute('marker-end','url(#arrow)');
+    }
+  }
+  $edges.appendChild(path);
+}
+// side 지정 시 해당 side의 정확한 포인트 반환
+function sidePoint(node,side){
+  const cx=node.x+node.w/2, cy=node.y+node.h/2;
+  if(side==='top')    return {x:cx, y:node.y};
+  if(side==='bottom') return {x:cx, y:node.y+node.h};
+  if(side==='left')   return {x:node.x, y:cy};
+  if(side==='right')  return {x:node.x+node.w, y:cy};
+  return {x:cx, y:cy};
+}
+// 드롭 위치에서 가장 가까운 side 결정
+function closestSide(node,px,py){
+  const cx=node.x+node.w/2, cy=node.y+node.h/2;
+  const sides=[
+    {side:'top',    x:cx, y:node.y},
+    {side:'bottom', x:cx, y:node.y+node.h},
+    {side:'left',   x:node.x, y:cy},
+    {side:'right',  x:node.x+node.w, y:cy},
+  ];
+  let best=null, bestD=Infinity;
+  for(const s of sides){
+    const d=Math.sqrt((px-s.x)**2+(py-s.y)**2);
+    if(d<bestD){bestD=d; best=s.side;}
+  }
+  return best;
+}
+function edgePt(a,b){
+  const ax=a.x+a.w/2, ay=a.y+a.h/2, bx=b.x+b.w/2, by=b.y+b.h/2, dx=bx-ax, dy=by-ay;
+  if(dx===0&&dy===0) return{x:ax,y:ay};
+  if(a.type==='decision'){
+    const hw=a.w/2, hh=a.h/2, t=1/(Math.abs(dx)/hw+Math.abs(dy)/hh);
+    return{x:ax+dx*t,y:ay+dy*t};
+  }
+  const hw=a.w/2, hh=a.h/2, tx=dx!==0?hw/Math.abs(dx):Infinity, ty=dy!==0?hh/Math.abs(dy):Infinity, t=Math.min(tx,ty);
+  return{x:ax+dx*t,y:ay+dy*t};
+}
+function orthoPath(from,to){
+  const fcx=from.x+from.w/2,fcy=from.y+from.h/2,tcx=to.x+to.w/2,tcy=to.y+to.h/2;
+  const dx=tcx-fcx,dy=tcy-fcy,GAP=20;
+  let pts;
+  if(Math.abs(dy)>=Math.abs(dx)){
+    const goD=dy>0,sY=goD?from.y+from.h:from.y,eY=goD?to.y:to.y+to.h,sX=fcx,eX=tcx;
+    if((goD&&eY-sY>GAP*2)||(!goD&&sY-eY>GAP*2)){
+      const mY=(sY+eY)/2;
+      pts=[{x:sX,y:sY},{x:sX,y:mY},{x:eX,y:mY},{x:eX,y:eY}];
+    }else{
+      const side=(dx>=0)?Math.max(from.x+from.w,to.x+to.w)+GAP:Math.min(from.x,to.x)-GAP;
+      pts=[
+        {x:sX,y:sY},
+        {x:sX,y:sY+(goD?GAP:-GAP)},
+        {x:side,y:sY+(goD?GAP:-GAP)},
+        {x:side,y:eY+(goD?-GAP:GAP)},
+        {x:eX,y:eY+(goD?-GAP:GAP)},
+        {x:eX,y:eY}
+      ];
+    }
+  }else{
+    const goR=dx>0,sX=goR?from.x+from.w:from.x,eX=goR?to.x:to.x+to.w,sY=fcy,eY=tcy;
+    if((goR&&eX-sX>GAP*2)||(!goR&&sX-eX>GAP*2)){
+      const mX=(sX+eX)/2;
+      pts=[{x:sX,y:sY},{x:mX,y:sY},{x:mX,y:eY},{x:eX,y:eY}];
+    }else{
+      const side=(dy>=0)?Math.max(from.y+from.h,to.y+to.h)+GAP:Math.min(from.y,to.y)-GAP;
+      pts=[
+        {x:sX,y:sY},
+        {x:sX+(goR?GAP:-GAP),y:sY},
+        {x:sX+(goR?GAP:-GAP),y:side},
+        {x:eX+(goR?-GAP:GAP),y:side},
+        {x:eX+(goR?-GAP:GAP),y:eY},
+        {x:eX,y:eY}
+      ];
+    }
+  }
+  return pts.map((p,i)=>(i===0?'M ':'L ')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+}
+// side 지정된 ortho path
+function orthoPathPts(from,to,p1,p2,fromSide,toSide){
+  const GAP=20;
+  // 단순 접근: 시작점에서 side 방향으로 GAP만큼 나간 후, 직교로 연결
+  const ext1=extendFromSide(p1,fromSide,GAP);
+  const ext2=extendFromSide(p2,toSide,GAP);
+
+  // fromSide와 toSide의 방향 조합에 따라 중간 경로 결정
+  const isVertF = (fromSide==='top'||fromSide==='bottom');
+  const isVertT = (toSide==='top'||toSide==='bottom');
+
+  let pts;
+  if(isVertF && isVertT){
+    // 둘 다 상하 → 가운데 수평선으로 연결
+    const midY=(ext1.y+ext2.y)/2;
+    pts=[p1,ext1,{x:ext1.x,y:midY},{x:ext2.x,y:midY},ext2,p2];
+  } else if(!isVertF && !isVertT){
+    // 둘 다 좌우 → 가운데 수직선으로 연결
+    const midX=(ext1.x+ext2.x)/2;
+    pts=[p1,ext1,{x:midX,y:ext1.y},{x:midX,y:ext2.y},ext2,p2];
+  } else {
+    // 하나는 상하, 하나는 좌우 → L자형
+    if(isVertF){
+      pts=[p1,ext1,{x:ext2.x,y:ext1.y},ext2,p2];
+    } else {
+      pts=[p1,ext1,{x:ext1.x,y:ext2.y},ext2,p2];
+    }
+  }
+  return pts.map((p,i)=>(i===0?'M ':'L ')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+}
+function extendFromSide(pt,side,gap){
+  if(side==='top')    return {x:pt.x, y:pt.y-gap};
+  if(side==='bottom') return {x:pt.x, y:pt.y+gap};
+  if(side==='left')   return {x:pt.x-gap, y:pt.y};
+  if(side==='right')  return {x:pt.x+gap, y:pt.y};
+  return {x:pt.x, y:pt.y};
+}
+function updMemoTools(){
+  if(state.selected&&state.selected.kind==='memo'&&isOnlySelected('memo',state.selected.id)){
+    $memoT.classList.add('visible');
+    const m=state.memos[state.selected.id];
+    if(m) $memoFS.value=String(m.fontSize);
+  }else{
+    $memoT.classList.remove('visible');
+  }
+}
+function syncTextColorUI(){
+  let color = state.currentTextColor;
+  if(state.selected && state.selected.kind==='node' && state.nodes[state.selected.id]){
+    color = state.nodes[state.selected.id].textColor || '#1d1d1f';
+  }
+  if(state.selected && state.selected.kind==='memo' && state.memos[state.selected.id]){
+    color = state.memos[state.selected.id].textColor || '#3a3a3c';
+  }
+  document.querySelectorAll('.text-color-swatch').forEach(sw=>{
+    sw.classList.toggle('active', sw.dataset.textColor === color);
+  });
+}
+
+/* Editor */
+function openEditor(kind,id,selectAll){
+  const r=$svg.getBoundingClientRect(),sx=r.width/CW,sy=r.height/CH;
+  if(kind==='node'){
+    const n=state.nodes[id]; if(!n)return;
+    editing={kind:'node',id};
+    $edit.style.display='block';
+    $edit.style.left=(r.left+(n.x+4)*sx)+'px';
+    $edit.style.top=(r.top+(n.y+4)*sy)+'px';
+    $edit.style.width=((n.w-8)*sx)+'px';
+    $edit.style.height=((n.h-8)*sy)+'px';
+    $edit.style.fontSize=(13*sy)+'px';
+    $edit.style.textAlign='center';
+    $edit.style.lineHeight='1.3';
+    $edit.value=n.text;
+  }else{
+    const m=state.memos[id]; if(!m)return;
+    editing={kind:'memo',id};
+    $edit.style.display='block';
+    $edit.style.left=(r.left+m.x*sx)+'px';
+    $edit.style.top=(r.top+m.y*sy)+'px';
+    $edit.style.width=(m.w*sx)+'px';
+    $edit.style.height=(m.h*sy)+'px';
+    $edit.style.fontSize=(m.fontSize*sy)+'px';
+    $edit.style.textAlign='left';
+    $edit.style.lineHeight=String(MEMO_LH);
+    $edit.value=m.text;
+  }
+  $edit.focus();
+  if(selectAll) $edit.select();
+  else $edit.setSelectionRange($edit.value.length,$edit.value.length);
+  autoGrow();
+}
+function autoGrow(){
+  $edit.style.height='auto';
+  $edit.style.height=$edit.scrollHeight+'px';
+}
+function closeEditor(commit){
+  if(!editing)return;
+  if(commit!==false){
+    const newText=$edit.value||' ';
+    if(editing.kind==='node'){
+      const n=state.nodes[editing.id];
+      if(n && newText!==n.text){
+        pushH();
+        n.text=newText;
+        render();
+      }
+    }else{
+      const m=state.memos[editing.id];
+      if(m && newText!==m.text){
+        pushH();
+        m.text=newText;
+        const d=measMemo(m.text,m.fontSize,m.w);
+        m.h=d.h;
+        render();
+      }
+    }
+  }
+  editing=null;
+  $edit.style.display='none';
+  $edit.value='';
+}
+
+/* Interaction */
+function onDown(e){
+  if(e.button!==0)return;
+
+  if(document.activeElement && typeof document.activeElement.blur==='function'){
+    document.activeElement.blur();
+  }
+
+  if(state.panMode){
+    interaction = {
+      kind:'pan-all',
+      startClientX:e.clientX,
+      startClientY:e.clientY,
+      startSnap:snap()
+    };
+    e.preventDefault();
+    return;
+  }
+
+  hideCtx();
+  closeEditor();
+
+  const pt=c2s(e.clientX,e.clientY), target=e.target;
+
+  if(target.classList.contains('resize-handle')){
+    const objId=target.dataset.nodeId, dir=target.dataset.dir;
+    const rKind=target.dataset.resizeKind||'node';
+    const obj=rKind==='memo'?state.memos[objId]:state.nodes[objId];
+    if(!obj)return;
+    interaction={
+      kind:'resize',
+      resizeKind:rKind,
+      id:objId,
+      dir,
+      origX:obj.x,
+      origY:obj.y,
+      origW:obj.w,
+      origH:obj.h,
+      startPt:pt,
+      startSnap:snap()
+    };
+    e.preventDefault();
+    return;
+  }
+
+  if(target.classList.contains('conn-handle')){
+    const fromId=target.dataset.nodeId, fromSide=target.dataset.side, tmp=svgNS('path');
+    const sx=+target.getAttribute('cx');
+    const sy=+target.getAttribute('cy');
+    tmp.setAttribute('d',`M ${sx} ${sy} L ${pt.x} ${pt.y}`);
+    tmp.classList.add('edge-path');
+    tmp.setAttribute('stroke-dasharray','5,3');
+    tmp.setAttribute('marker-end','url(#arrow)');
+    $over.appendChild(tmp);
+
+    interaction={kind:'draw-edge',fromId,fromSide,tmpPath:tmp,sx,sy};
+    e.preventDefault();
+    return;
+  }
+
+  const memoG=target.closest('.memo-group');
+  if(memoG){
+    const id = memoG.dataset.id;
+    const alreadySelected = state.selectedItems.some(s => s.kind === 'memo' && s.id === id);
+
+    if(e.shiftKey){
+      toggleSelect('memo', id);
+      state.selected = { kind:'memo', id };
+      render();
+      e.preventDefault();
+      return;
+    }
+
+    if(!alreadySelected){
+      state.selectedItems = [{ kind:'memo', id }];
+    }
+    state.selected = { kind:'memo', id };
+    render();
+
+    interaction = {
+      kind:'drag-group',
+      startClientX:e.clientX,
+      startClientY:e.clientY,
+      moved:false,
+      startSnap:snap()
+    };
+    e.preventDefault();
+    return;
+  }
+
+  const nodeG=target.closest('.node-group');
+  if(nodeG){
+    const id = nodeG.dataset.id;
+    const alreadySelected = state.selectedItems.some(s => s.kind === 'node' && s.id === id);
+
+    if(e.shiftKey){
+      toggleSelect('node', id);
+      state.selected = { kind:'node', id };
+      render();
+      e.preventDefault();
+      return;
+    }
+
+    if(!alreadySelected){
+      state.selectedItems = [{ kind:'node', id }];
+    }
+    state.selected = { kind:'node', id };
+    render();
+
+    interaction = {
+      kind:'drag-group',
+      startClientX:e.clientX,
+      startClientY:e.clientY,
+      moved:false,
+      startSnap:snap()
+    };
+    e.preventDefault();
+    return;
+  }
+
+  if(target.classList.contains('edge-hit')){
+    state.selected={kind:'edge',id:target.dataset.id};
+    state.selectedItems=[];
+    render();
+    return;
+  }
+
+  state.selected=null;
+  state.selectedItems=[];
+  render();
+  // 빈 영역 드래그 → 범위 선택 시작
+  const selRect=svgNS('rect');
+  selRect.classList.add('select-rect');
+  selRect.setAttribute('x',pt.x);
+  selRect.setAttribute('y',pt.y);
+  selRect.setAttribute('width',0);
+  selRect.setAttribute('height',0);
+  $over.appendChild(selRect);
+  interaction={
+    kind:'drag-select',
+    startX:pt.x, startY:pt.y,
+    rect:selRect
+  };
+  e.preventDefault();
+}
+function onMove(e){
+  if(!interaction)return;
+  const pt=c2s(e.clientX,e.clientY);
+
+  if(interaction.kind==='drag-select'){
+    const x1=Math.min(interaction.startX,pt.x);
+    const y1=Math.min(interaction.startY,pt.y);
+    const w=Math.abs(pt.x-interaction.startX);
+    const h=Math.abs(pt.y-interaction.startY);
+    interaction.rect.setAttribute('x',x1);
+    interaction.rect.setAttribute('y',y1);
+    interaction.rect.setAttribute('width',w);
+    interaction.rect.setAttribute('height',h);
+    return;
+  }
+
+  if(interaction.kind === 'drag-group'){
+    const ddx=e.clientX-interaction.startClientX;
+    const ddy=e.clientY-interaction.startClientY;
+    if(!interaction.moved && Math.sqrt(ddx*ddx+ddy*ddy)<DRAG_TH) return;
+    interaction.moved=true;
+
+    const prev=c2s(interaction.startClientX,interaction.startClientY);
+    const curr=c2s(e.clientX,e.clientY);
+    const dx=curr.x-prev.x;
+    const dy=curr.y-prev.y;
+
+    for(const sel of state.selectedItems){
+      if(sel.kind==='node'){
+        const n=state.nodes[sel.id];
+        if(n){
+          n.x=Math.max(0,Math.min(CW-n.w,n.x+dx));
+          n.y=Math.max(0,Math.min(CH-n.h,n.y+dy));
+        }
+      }
+      if(sel.kind==='memo'){
+        const m=state.memos[sel.id];
+        if(m){
+          m.x=Math.max(0,Math.min(CW-m.w,m.x+dx));
+          m.y=Math.max(0,Math.min(CH-m.h,m.y+dy));
+        }
+      }
+    }
+
+    interaction.startClientX=e.clientX;
+    interaction.startClientY=e.clientY;
+    render();
+    return;
+  }
+
+  if(interaction.kind === 'pan-all'){
+    const prev=c2s(interaction.startClientX,interaction.startClientY);
+    const curr=c2s(e.clientX,e.clientY);
+    const dx=curr.x-prev.x;
+    const dy=curr.y-prev.y;
+
+    for(const n of Object.values(state.nodes)){ n.x+=dx; n.y+=dy; }
+    for(const m of Object.values(state.memos)){ m.x+=dx; m.y+=dy; }
+
+    interaction.startClientX=e.clientX;
+    interaction.startClientY=e.clientY;
+    render();
+    return;
+  }
+
+  if(interaction.kind==='resize'){
+    const rKind=interaction.resizeKind||'node';
+    const obj=rKind==='memo'?state.memos[interaction.id]:state.nodes[interaction.id];
+    if(!obj)return;
+
+    const dx=pt.x-interaction.startPt.x;
+    const dy=pt.y-interaction.startPt.y;
+    const dir=interaction.dir;
+    const minW=rKind==='memo'?40:MIN_W;
+    const minH=rKind==='memo'?20:MIN_H;
+
+    let nx=interaction.origX, ny=interaction.origY, nw=interaction.origW, nh=interaction.origH;
+
+    if(dir.includes('w')){
+      nw=Math.max(minW,interaction.origW-dx);
+      nx=interaction.origX+interaction.origW-nw;
+    }else if(dir.includes('e')){
+      nw=Math.max(minW,interaction.origW+dx);
+    }
+
+    if(dir.includes('n')){
+      nh=Math.max(minH,interaction.origH-dy);
+      ny=interaction.origY+interaction.origH-nh;
+    }else if(dir.includes('s')){
+      nh=Math.max(minH,interaction.origH+dy);
+    }
+
+    if(nx<0){nw+=nx;nx=0;}
+    if(ny<0){nh+=ny;ny=0;}
+    if(nx+nw>CW)nw=CW-nx;
+    if(ny+nh>CH)nh=CH-ny;
+
+    obj.x=nx;obj.y=ny;obj.w=nw;obj.h=nh;
+    render();
+    return;
+  }
+
+  if(interaction.kind==='draw-edge'){
+    interaction.tmpPath.setAttribute('d',`M ${interaction.sx} ${interaction.sy} L ${pt.x} ${pt.y}`);
+  }
+}
+function onUp(e){
+  if(!interaction)return;
+  const ia=interaction;
+  interaction=null;
+
+  if(ia.kind==='drag-select'){
+    ia.rect.remove();
+    // 선택 사각형 범위 계산
+    const pt=c2s(e.clientX,e.clientY);
+    const x1=Math.min(ia.startX,pt.x);
+    const y1=Math.min(ia.startY,pt.y);
+    const x2=Math.max(ia.startX,pt.x);
+    const y2=Math.max(ia.startY,pt.y);
+    // 범위가 너무 작으면 (클릭) 무시
+    if(x2-x1<5 && y2-y1<5) return;
+    // 범위 안에 있는 노드/메모 선택
+    state.selectedItems=[];
+    for(const n of Object.values(state.nodes)){
+      const ncx=n.x+n.w/2, ncy=n.y+n.h/2;
+      if(ncx>=x1 && ncx<=x2 && ncy>=y1 && ncy<=y2){
+        state.selectedItems.push({kind:'node',id:n.id});
+      }
+    }
+    for(const m of Object.values(state.memos)){
+      const mcx=m.x+m.w/2, mcy=m.y+m.h/2;
+      if(mcx>=x1 && mcx<=x2 && mcy>=y1 && mcy<=y2){
+        state.selectedItems.push({kind:'memo',id:m.id});
+      }
+    }
+    if(state.selectedItems.length>0){
+      state.selected=state.selectedItems[state.selectedItems.length-1];
+      showHint(`${state.selectedItems.length}개 선택됨`);
+    }
+    render();
+    return;
+  }
+
+  if(ia.kind==='resize'){
+    hist.past.push(ia.startSnap);
+    if(hist.past.length>hist.MAX)hist.past.shift();
+    hist.future=[];
+    updUB();
+    return;
+  }
+
+  if(ia.kind==='drag-group'){
+    if(ia.moved){
+      hist.past.push(ia.startSnap);
+      if(hist.past.length>hist.MAX)hist.past.shift();
+      hist.future=[];
+      updUB();
+    }else if(state.selected && state.selectedItems.length===1){
+      const now=Date.now();
+      const only=state.selectedItems[0];
+      if(lastClickId===only.id && (now-lastClickTime)<DBL_MS){
+        if(only.kind==='node') openEditor('node',only.id);
+        else if(only.kind==='memo') openEditor('memo',only.id);
+        lastClickId=null;
+        lastClickTime=0;
+      }else{
+        lastClickId=only.id;
+        lastClickTime=now;
+      }
+    }
+    return;
+  }
+
+  if(ia.kind==='pan-all'){
+    hist.past.push(ia.startSnap);
+    if(hist.past.length>hist.MAX)hist.past.shift();
+    hist.future=[];
+    updUB();
+    return;
+  }
+
+  if(ia.kind==='draw-edge'){
+    ia.tmpPath.remove();
+    const elem=document.elementFromPoint(e.clientX,e.clientY);
+    let tid=null, toSide=null;
+    if(elem){
+      const ng=elem.closest('.node-group');
+      if(ng) tid=ng.dataset.id;
+      // 드롭된 위치에서 가장 가까운 핸들의 side를 결정
+      if(tid && tid!==ia.fromId){
+        const tNode=state.nodes[tid];
+        if(tNode){
+          const dropPt=c2s(e.clientX,e.clientY);
+          toSide=closestSide(tNode,dropPt.x,dropPt.y);
+        }
+      }
+    }
+    if(tid && tid!==ia.fromId){
+      const exists=Object.values(state.edges).some(ed=>ed.from===ia.fromId&&ed.to===tid);
+      if(!exists){
+        pushH();
+        const id=uid('e');
+        state.edges[id]={id,from:ia.fromId,to:tid,lineMode:state.lineMode,fromSide:ia.fromSide,toSide:toSide};
+      }
+    }
+    render();
+  }
+}
+
+/* Context Menu */
+function showCtx(cx,cy,kind,rawX,rawY){
+  $ctx.innerHTML='';
+
+  const add=(label,fn,danger)=>{
+    const b=document.createElement('button');
+    b.textContent=label;
+    if(danger) b.classList.add('danger');
+    b.onclick=()=>{ hideCtx(); fn(); };
+    $ctx.appendChild(b);
+  };
+  const sep=()=>{
+    const d=document.createElement('div');
+    d.className='sep';
+    $ctx.appendChild(d);
+  };
+
+  if(kind==='node'){
+    const id=state.selected.id;
+    add('이름 편집',()=>openEditor('node',id));
+    add('복사 (Ctrl+C)',()=>{ state.selected={kind:'node',id}; copySelected(); });
+    sep();
+    ['#fafafa','#e3f2fd','#e8f5e9','#fff8e1','#fce4ec','#ede7f6'].forEach(c=>{
+      const b=document.createElement('button');
+      b.innerHTML=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};border:1px solid #ccc;vertical-align:middle;margin-right:6px"></span>색상 변경`;
+      b.onclick=()=>{ hideCtx(); setColor(id,c); };
+      $ctx.appendChild(b);
+    });
+    sep();
+    add('삭제',()=>delNode(id),true);
+  }else if(kind==='memo'){
+    const id=state.selected.id;
+    add('메모 편집',()=>openEditor('memo',id));
+    add('복사 (Ctrl+C)',()=>{ state.selected={kind:'memo',id}; copySelected(); });
+    sep();
+    [12,14,16,20,24].forEach(fs=>add(`글자크기 ${fs}px`,()=>setMemoFS(id,fs)));
+    sep();
+    add('메모 삭제',()=>delMemo(id),true);
+  }else if(kind==='edge'){
+    const eid=state.selected.id;
+    const edge=state.edges[eid];
+    const curMode=edge&&edge.lineMode||state.lineMode||'straight';
+    if(curMode==='straight'){
+      add('꺾인선으로 변경',()=>{pushH();state.edges[eid].lineMode='ortho';render();});
+    }else{
+      add('직선으로 변경',()=>{pushH();state.edges[eid].lineMode='straight';render();});
+    }
+    sep();
+    const colors=[
+      {c:'#6e6e73',name:'기본'},{c:'#1d6fff',name:'블루'},
+      {c:'#d32f2f',name:'레드'},{c:'#2e7d32',name:'그린'},{c:'#f57c00',name:'오렌지'}
+    ];
+    colors.forEach(col=>{
+      const b=document.createElement('button');
+      b.innerHTML=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${col.c};border:1px solid #ccc;vertical-align:middle;margin-right:6px"></span>${col.name}`;
+      b.onclick=()=>{hideCtx();pushH();state.edges[eid].color=col.c;render();};
+      $ctx.appendChild(b);
+    });
+    sep();
+    add('연결선 삭제',()=>delEdge(state.selected.id),true);
+  }else{
+    const pt=c2s(rawX,rawY);
+    add('＋ 프로세스 추가',()=>addNode('process',pt.x,pt.y));
+    add('◇ 판단 추가',()=>addNode('decision',pt.x,pt.y));
+    add('○ 시작/종료 추가',()=>addNode('start-end',pt.x,pt.y));
+    sep();
+    add('✎ 메모 추가',()=>addMemo(pt.x,pt.y));
+    if(clipboard.data){
+      sep();
+      add('붙여넣기 (Ctrl+V)',pasteClipboard);
+    }
+  }
+
+  $ctx.style.display='block';
+  const vw=window.innerWidth, vh=window.innerHeight, rect=$ctx.getBoundingClientRect();
+  let x=cx, y=cy;
+  if(x+rect.width>vw)x=vw-rect.width-6;
+  if(y+rect.height>vh)y=vh-rect.height-6;
+  $ctx.style.left=x+'px';
+  $ctx.style.top=y+'px';
+}
+
+/* Events */
+$svg.addEventListener('mousedown',onDown);
+window.addEventListener('mousemove',onMove);
+window.addEventListener('mouseup',onUp);
+
+$edit.addEventListener('input',autoGrow);
+$edit.addEventListener('blur',()=>closeEditor(true));
+$edit.addEventListener('keydown',(e)=>{
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); closeEditor(true); }
+  if(e.key==='Escape'){ e.preventDefault(); closeEditor(true); }
+});
+
+$svg.addEventListener('contextmenu',(e)=>{
+  e.preventDefault();
+  if(e.target.classList.contains('resize-handle')) return;
+
+  const memoG=e.target.closest('.memo-group');
+  const nodeG=e.target.closest('.node-group');
+  const eh=e.target.classList.contains('edge-hit') ? e.target : null;
+
+  if(memoG){
+    const id=memoG.dataset.id;
+    state.selected={kind:'memo',id};
+    state.selectedItems=[{kind:'memo',id}];
+    render();
+    showCtx(e.clientX,e.clientY,'memo');
+  }else if(nodeG){
+    const id=nodeG.dataset.id;
+    state.selected={kind:'node',id};
+    state.selectedItems=[{kind:'node',id}];
+    render();
+    showCtx(e.clientX,e.clientY,'node');
+  }else if(eh){
+    state.selected={kind:'edge',id:eh.dataset.id};
+    state.selectedItems=[];
+    render();
+    showCtx(e.clientX,e.clientY,'edge');
+  }else{
+    state.selected=null;
+    state.selectedItems=[];
+    render();
+    showCtx(e.clientX,e.clientY,'canvas',e.clientX,e.clientY);
+  }
+});
+
+document.addEventListener('mousedown',(e)=>{
+  if(!$ctx.contains(e.target)) hideCtx();
+},true);
+
+window.addEventListener('keydown',(e)=>{
+  if(document.activeElement === $edit) return;
+  if(document.activeElement === $cw || document.activeElement === $ch) return;
+  if(document.activeElement === $memoFS) return;
+  if($fnOverlay.classList.contains('show')) return;
+
+  if(e.code === 'Space'){
+    e.preventDefault();
+    if(!state.panMode){
+      state.panMode = true;
+      document.body.style.cursor = 'grab';
+    }
+  }
+
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){
+    e.preventDefault();
+    $fnInput.value = state.lastJsonFileName || '';
+    $fnOverlay.classList.add('show');
+    $fnInput.focus();
+    $fnInput.select();
+  }else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='c'){
+    e.preventDefault(); copySelected();
+  }else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='v'){
+    e.preventDefault(); pasteClipboard();
+  }else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey){
+    e.preventDefault(); undo();
+  }else if(((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y')||((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='z')){
+    e.preventDefault(); redo();
+  }else if((e.key==='Delete'||e.key==='Backspace')){
+    if(state.selectedItems.length){
+      e.preventDefault();
+      pushH();
+      for(const sel of state.selectedItems){
+        if(sel.kind==='node'){
+          for(const eid of Object.keys(state.edges)){
+            if(state.edges[eid].from===sel.id||state.edges[eid].to===sel.id) delete state.edges[eid];
+          }
+          delete state.nodes[sel.id];
+        }
+        if(sel.kind==='memo'){
+          delete state.memos[sel.id];
+        }
+      }
+      state.selectedItems=[];
+      if(state.selected && state.selected.kind!=='edge') state.selected=null;
+      render();
+    }else if(state.selected){
+      e.preventDefault();
+      if(state.selected.kind==='node') delNode(state.selected.id);
+      else if(state.selected.kind==='edge') delEdge(state.selected.id);
+      else if(state.selected.kind==='memo') delMemo(state.selected.id);
+    }
+  }
+
+  // 화살표 키: 선택된 도형/메모 이동 (Shift+화살표 = 10px)
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && !e.ctrlKey && !e.metaKey){
+    const items=state.selectedItems.length ? state.selectedItems
+      : (state.selected && (state.selected.kind==='node'||state.selected.kind==='memo')) ? [state.selected]
+      : [];
+    if(items.length){
+      e.preventDefault();
+      const step=e.shiftKey?10:1;
+      const dx=e.key==='ArrowRight'?step:e.key==='ArrowLeft'?-step:0;
+      const dy=e.key==='ArrowDown'?step:e.key==='ArrowUp'?-step:0;
+      pushH();
+      for(const sel of items){
+        const obj=sel.kind==='node'?state.nodes[sel.id]:state.memos[sel.id];
+        if(obj){
+          obj.x=Math.max(0,Math.min(CW-obj.w,obj.x+dx));
+          obj.y=Math.max(0,Math.min(CH-obj.h,obj.y+dy));
+        }
+      }
+      render();
+    }
+  }
+});
+window.addEventListener('keyup',(e)=>{
+  if(e.code === 'Space'){
+    state.panMode = false;
+    document.body.style.cursor = 'default';
+  }
+});
+
+$memoFS.addEventListener('change',()=>{
+  if(state.selected&&state.selected.kind==='memo'&&isOnlySelected('memo',state.selected.id)){
+    setMemoFS(state.selected.id,parseInt($memoFS.value,10));
+  }
+});
+
+$lnS.addEventListener('click',()=>setLineMode('straight'));
+$lnO.addEventListener('click',()=>setLineMode('ortho'));
+
+// 정렬 기능
+document.querySelectorAll('[data-align]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(state.selectedItems.length<2) return;
+    pushH();
+    const objs=state.selectedItems.map(s=>{
+      if(s.kind==='node') return state.nodes[s.id];
+      if(s.kind==='memo') return state.memos[s.id];
+      return null;
+    }).filter(Boolean);
+    if(objs.length<2) return;
+    const align=btn.dataset.align;
+    if(align==='left'){
+      const minX=Math.min(...objs.map(o=>o.x));
+      objs.forEach(o=>{ o.x=minX; });
+    }else if(align==='center-h'){
+      const minX=Math.min(...objs.map(o=>o.x));
+      const maxX=Math.max(...objs.map(o=>o.x+o.w));
+      const centerX=(minX+maxX)/2;
+      objs.forEach(o=>{ o.x=centerX-o.w/2; });
+    }else if(align==='right'){
+      const maxR=Math.max(...objs.map(o=>o.x+o.w));
+      objs.forEach(o=>{ o.x=maxR-o.w; });
+    }else if(align==='top'){
+      const minY=Math.min(...objs.map(o=>o.y));
+      objs.forEach(o=>{ o.y=minY; });
+    }else if(align==='center-v'){
+      const minY=Math.min(...objs.map(o=>o.y));
+      const maxY=Math.max(...objs.map(o=>o.y+o.h));
+      const centerY=(minY+maxY)/2;
+      objs.forEach(o=>{ o.y=centerY-o.h/2; });
+    }else if(align==='bottom'){
+      const maxB=Math.max(...objs.map(o=>o.y+o.h));
+      objs.forEach(o=>{ o.y=maxB-o.h; });
+    }else if(align==='dist-h'){
+      if(objs.length<3){showHint('3개 이상 선택 필요');return;}
+      const sorted=[...objs].sort((a,b)=>a.x-b.x);
+      const first=sorted[0], last=sorted[sorted.length-1];
+      const totalW=sorted.reduce((s,o)=>s+o.w,0);
+      const totalSpace=(last.x+last.w)-first.x-totalW;
+      const gap=totalSpace/(sorted.length-1);
+      let curX=first.x+first.w+gap;
+      for(let i=1;i<sorted.length-1;i++){
+        sorted[i].x=curX;
+        curX+=sorted[i].w+gap;
+      }
+    }else if(align==='dist-v'){
+      if(objs.length<3){showHint('3개 이상 선택 필요');return;}
+      const sorted=[...objs].sort((a,b)=>a.y-b.y);
+      const first=sorted[0], last=sorted[sorted.length-1];
+      const totalH=sorted.reduce((s,o)=>s+o.h,0);
+      const totalSpace=(last.y+last.h)-first.y-totalH;
+      const gap=totalSpace/(sorted.length-1);
+      let curY=first.y+first.h+gap;
+      for(let i=1;i<sorted.length-1;i++){
+        sorted[i].y=curY;
+        curY+=sorted[i].h+gap;
+      }
+    }
+    render();
+  });
+});
+
+document.querySelectorAll('#toolbar [data-action]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const action=btn.dataset.action;
+    const wrap=document.getElementById('canvas-wrap');
+    const r=$svg.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
+    const vcx=(Math.max(wr.left,r.left)+Math.min(wr.right,r.right))/2;
+    const vcy=(Math.max(wr.top,r.top)+Math.min(wr.bottom,r.bottom))/2;
+    const pt=c2s(vcx,vcy), ox=Math.random()*60-30, oy=Math.random()*60-30;
+
+    if(action==='add-process') addNode('process',pt.x+ox,pt.y+oy);
+    else if(action==='add-decision') addNode('decision',pt.x+ox,pt.y+oy);
+    else if(action==='add-start-end') addNode('start-end',pt.x+ox,pt.y+oy);
+    else if(action==='add-memo') addMemo(pt.x+ox,pt.y+oy);
+  });
+});
+
+document.querySelectorAll('.color-swatch:not(.text-color-swatch):not(.edge-color-swatch)').forEach(sw=>{
+  sw.addEventListener('click',()=>{
+    document.querySelectorAll('.color-swatch:not(.text-color-swatch):not(.edge-color-swatch)').forEach(x=>x.classList.remove('active'));
+    sw.classList.add('active');
+    state.currentColor=sw.dataset.color;
+    if(state.selected&&state.selected.kind==='node'&&isOnlySelected('node',state.selected.id)){
+      setColor(state.selected.id,state.currentColor);
+    }
+  });
+});
+
+document.querySelectorAll('.text-color-swatch').forEach(sw=>{
+  sw.addEventListener('click',()=>{
+    document.querySelectorAll('.text-color-swatch').forEach(x=>x.classList.remove('active'));
+    sw.classList.add('active');
+    state.currentTextColor = sw.dataset.textColor;
+
+    if(state.selected && state.selected.kind==='node' && isOnlySelected('node', state.selected.id)){
+      setTextColor('node', state.selected.id, state.currentTextColor);
+    }else if(state.selected && state.selected.kind==='memo' && isOnlySelected('memo', state.selected.id)){
+      setTextColor('memo', state.selected.id, state.currentTextColor);
+    }
+  });
+});
+
+// edge 색상 스와치
+document.querySelectorAll('.edge-color-swatch').forEach(sw=>{
+  sw.addEventListener('click',()=>{
+    if(state.selected && state.selected.kind==='edge' && state.edges[state.selected.id]){
+      pushH();
+      state.edges[state.selected.id].color=sw.dataset.edgeColor;
+      render();
+    }
+  });
+});
+
+document.getElementById('btn-undo').addEventListener('click',undo);
+document.getElementById('btn-redo').addEventListener('click',redo);
+
+document.getElementById('btn-canvas-apply').addEventListener('click',applyCanvasSize);
+function applyCanvasSize(){
+  const nw=Math.max(800,Math.min(9999,parseInt($cw.value,10)||3200));
+  const nh=Math.max(600,Math.min(9999,parseInt($ch.value,10)||2000));
+  CW=nw; CH=nh;
+  $svg.setAttribute('width',CW);
+  $svg.setAttribute('height',CH);
+  $cw.value=CW;
+  $ch.value=CH;
+  render();
+  showHint(`캔버스 크기: ${CW} × ${CH}`);
+}
+
+document.getElementById('btn-clear').addEventListener('click',()=>{
+  if(!Object.keys(state.nodes).length && !Object.keys(state.memos).length) return;
+  if(!confirm('정말 모든 도형, 메모, 연결선을 삭제할까요?')) return;
+  pushH();
+  state.nodes={}; state.edges={}; state.memos={};
+  state.selected=null;
+  state.selectedItems=[];
+  render();
+});
+
+document.getElementById('btn-save-json').addEventListener('click',()=>{
+  $fnInput.value = state.lastJsonFileName || '';
+  $fnOverlay.classList.add('show');
+  $fnInput.focus();
+  $fnInput.select();
+});
+$fnCancel.addEventListener('click',()=>{ $fnOverlay.classList.remove('show'); });
+$fnOk.addEventListener('click',doSaveJSON);
+$fnInput.addEventListener('keydown',(e)=>{
+  if(e.key==='Enter'){ e.preventDefault(); doSaveJSON(); }
+  if(e.key==='Escape'){ e.preventDefault(); $fnOverlay.classList.remove('show'); }
+});
+$fnOverlay.addEventListener('mousedown',(e)=>{
+  if(e.target===$fnOverlay) $fnOverlay.classList.remove('show');
+});
+function doSaveJSON(){
+  $fnOverlay.classList.remove('show');
+  let fname=$fnInput.value.trim();
+  if(!fname) fname='flow_'+new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  fname=fname.replace(/[<>:"/\\|?*]/g,'_');
+  if(!fname.endsWith('.json')) fname+='.json';
+  state.lastJsonFileName = fname.replace(/\.json$/,'');
+
+  const data={
+    version:4,
+    nodes:state.nodes,
+    edges:state.edges,
+    memos:state.memos,
+    lineMode:state.lineMode,
+    nextId:state.nextId,
+    canvasW:CW,
+    canvasH:CH
+  };
+
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=fname;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showHint(`"${fname}" 저장 완료`);
+}
+
+document.getElementById('btn-load-json').addEventListener('click',()=>$fileIn.click());
+$fileIn.addEventListener('change',(e)=>{
+  const f=e.target.files[0];
+  if(!f)return;
+  state.lastJsonFileName = f.name;
+
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      pushH();
+      state.nodes=data.nodes||{};
+      state.edges=data.edges||{};
+      state.memos=data.memos||{};
+      state.nextId=data.nextId||1;
+      // 이전 버전 JSON 호환: edge에 lineMode가 없으면 straight 기본값
+      for(const eid of Object.keys(state.edges)){
+        if(!state.edges[eid].lineMode) state.edges[eid].lineMode='straight';
+      }
+      state.selected=null;
+      state.selectedItems=[];
+      if(data.lineMode) setLineMode(data.lineMode);
+      if(data.canvasW&&data.canvasH){
+        $cw.value=data.canvasW;
+        $ch.value=data.canvasH;
+        applyCanvasSize();
+      }
+      render();
+      showHint('JSON 불러오기 완료');
+    }catch(err){
+      alert('JSON 오류:\n'+err.message);
+    }
+  };
+  reader.readAsText(f);
+  $fileIn.value='';
+});
+
+document.getElementById('btn-export-png').addEventListener('click',exportPNG);
+function exportPNG(){
+  if(!Object.keys(state.nodes).length&&!Object.keys(state.memos).length){
+    showHint('저장할 내용 없음');
+    return;
+  }
+
+  const margin=40;
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+
+  for(const n of Object.values(state.nodes)){
+    minX=Math.min(minX,n.x);
+    minY=Math.min(minY,n.y);
+    maxX=Math.max(maxX,n.x+n.w);
+    maxY=Math.max(maxY,n.y+n.h);
+  }
+  for(const m of Object.values(state.memos)){
+    minX=Math.min(minX,m.x);
+    minY=Math.min(minY,m.y);
+    maxX=Math.max(maxX,m.x+m.w);
+    maxY=Math.max(maxY,m.y+m.h);
+  }
+
+  minX=Math.max(0,minX-margin);
+  minY=Math.max(0,minY-margin);
+  maxX=Math.min(CW,maxX+margin);
+  maxY=Math.min(CH,maxY+margin);
+
+  const cropX=Math.floor(minX),cropY=Math.floor(minY),cropW=Math.ceil(maxX-minX),cropH=Math.ceil(maxY-minY);
+  const clone=$svg.cloneNode(true);
+
+  clone.querySelectorAll('.conn-handle,.edge-hit,.resize-handle').forEach(el=>el.remove());
+  clone.querySelectorAll('.selected').forEach(el=>el.classList.remove('selected'));
+  clone.querySelectorAll('.memo-bg').forEach(el=>{
+    el.setAttribute('stroke','transparent');
+    el.setAttribute('fill','transparent');
+  });
+
+  clone.setAttribute('viewBox',`${cropX} ${cropY} ${cropW} ${cropH}`);
+  clone.setAttribute('width',cropW);
+  clone.setAttribute('height',cropH);
+  inlineStyles(clone);
+
+  const bg=svgNS('rect');
+  bg.setAttribute('x',cropX);
+  bg.setAttribute('y',cropY);
+  bg.setAttribute('width',cropW);
+  bg.setAttribute('height',cropH);
+  bg.setAttribute('fill','#fff');
+  clone.insertBefore(bg,clone.firstChild);
+
+  const xml=new XMLSerializer().serializeToString(clone);
+  const svgBlob=new Blob(['<?xml version="1.0" standalone="no"?>\n'+xml],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(svgBlob);
+  const img=new Image();
+
+  img.onload=()=>{
+    const scale=2;
+    const canvas=document.createElement('canvas');
+    canvas.width=cropW*scale;
+    canvas.height=cropH*scale;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    URL.revokeObjectURL(url);
+
+    canvas.toBlob((blob)=>{
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=`flow_${new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+      showHint('PNG 저장 완료');
+    },'image/png');
+  };
+  img.onerror=()=>{ URL.revokeObjectURL(url); alert('PNG 변환 실패'); };
+  img.src=url;
+}
+function inlineStyles(svgEl){
+  svgEl.querySelectorAll('.node-shape').forEach(el=>{
+    el.setAttribute('stroke','#c4c4c7');
+    el.setAttribute('stroke-width','1.2');
+  });
+  svgEl.querySelectorAll('.node-text').forEach(el=>{
+    el.setAttribute('font-family','-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif');
+    el.setAttribute('font-size','13');
+    el.setAttribute('fill', el.style.fill || '#1d1d1f');
+    el.setAttribute('text-anchor','middle');
+    el.setAttribute('dominant-baseline','middle');
+  });
+  svgEl.querySelectorAll('.memo-text').forEach(el=>{
+    el.setAttribute('font-family','-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif');
+    el.setAttribute('fill', el.style.fill || '#3a3a3c');
+    el.setAttribute('dominant-baseline','hanging');
+  });
+  svgEl.querySelectorAll('.edge-path').forEach(el=>{
+    // inline style에 stroke가 있으면 유지, 없으면 기본값
+    if(!el.style.stroke) el.style.stroke='#6e6e73';
+    el.setAttribute('stroke-width','1.4');
+    el.setAttribute('fill','none');
+  });
+}
+
+/* Demo */
+function initDemo(){
+  const a={id:uid('n'),type:'start-end',x:280,y:180,w:120,h:50,text:'시작',color:'#fafafa',textColor:'#1d1d1f'};
+  const b={id:uid('n'),type:'process',x:260,y:290,w:160,h:60,text:'로그인 요청',color:'#e3f2fd',textColor:'#1d1d1f'};
+  const c={id:uid('n'),type:'decision',x:260,y:400,w:160,h:80,text:'권한 검토',color:'#fff8e1',textColor:'#1d1d1f'};
+  const d={id:uid('n'),type:'process',x:260,y:530,w:160,h:60,text:'승인 처리',color:'#e8f5e9',textColor:'#1d1d1f'};
+  const f={id:uid('n'),type:'process',x:500,y:400,w:160,h:60,text:'거부 알림',color:'#fce4ec',textColor:'#1d1d1f'};
+  const e2={id:uid('n'),type:'start-end',x:280,y:640,w:120,h:50,text:'종료',color:'#fafafa',textColor:'#1d1d1f'};
+  [a,b,c,d,f,e2].forEach(n=>state.nodes[n.id]=n);
+
+  const mkE=(from,to,lm)=>{
+    const id=uid('e');
+    state.edges[id]={id,from,to,lineMode:lm||'straight'};
+  };
+  mkE(a.id,b.id);
+  mkE(b.id,c.id);
+  mkE(c.id,d.id);
+  mkE(d.id,e2.id);
+  mkE(c.id,f.id,'ortho');
+
+  const mt='예외 케이스\n· 권한 거부 시 알림 발송\n· 외부 IP 차단\n\n확인 필요 사항\n· 보안팀 정책 문서 v2.1';
+  const dd=measMemo(mt,MEMO_DEF_FONT,MEMO_DEF_W);
+  const mid=uid('m');
+  state.memos[mid]={
+    id:mid,
+    x:740,
+    y:200,
+    w:dd.w,
+    h:dd.h,
+    text:mt,
+    fontSize:MEMO_DEF_FONT,
+    textColor:'#3a3a3c'
+  };
+}
+
+// ============ 자동저장 (localStorage) ============
+const LS_KEY='flowchart_autosave';
+
+function autoSave(){
+  try{
+    const data=JSON.stringify({
+      version:4,
+      nodes:state.nodes, edges:state.edges, memos:state.memos,
+      lineMode:state.lineMode, nextId:state.nextId,
+      canvasW:CW, canvasH:CH,
+      lastJsonFileName:state.lastJsonFileName||''
+    });
+    localStorage.setItem(LS_KEY, data);
+  }catch(e){/* localStorage 사용 불가 시 무시 */}
+}
+
+function autoLoad(){
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(!raw) return false;
+    const data=JSON.parse(raw);
+    state.nodes=data.nodes||{};
+    state.edges=data.edges||{};
+    state.memos=data.memos||{};
+    state.nextId=data.nextId||1;
+    if(data.lineMode) state.lineMode=data.lineMode;
+    if(data.lastJsonFileName) state.lastJsonFileName=data.lastJsonFileName;
+    if(data.canvasW&&data.canvasH){
+      CW=data.canvasW; CH=data.canvasH;
+      $svg.setAttribute('width',CW); $svg.setAttribute('height',CH);
+      if($cw){$cw.value=CW;} if($ch){$ch.value=CH;}
+    }
+    // 이전 버전 호환: edge lineMode 기본값
+    for(const eid of Object.keys(state.edges)){
+      if(!state.edges[eid].lineMode) state.edges[eid].lineMode='straight';
+    }
+    return Object.keys(state.nodes).length>0 || Object.keys(state.memos).length>0;
+  }catch(e){ return false; }
+}
+
+// 변경 시 자동저장 (render가 호출될 때마다)
+const _origRender=render;
+render=function(){
+  _origRender();
+  autoSave();
+};
+
+// 시작 시 복원: 저장된 데이터가 있으면 복원, 없으면 데모
+if(!autoLoad()){
+  initDemo();
+}
+render();
+updUB();
+
+// 연결선 버튼 동기화
+$lnS.classList.toggle('toggled',state.lineMode==='straight');
+$lnO.classList.toggle('toggled',state.lineMode==='ortho');
+
+showHint('자동저장 활성화 | Ctrl+S → JSON 저장 | Shift+클릭 → 다중선택',3000);
+
+// 브라우저 닫기/새로고침 방지
+window.addEventListener('beforeunload',(e)=>{
+  autoSave();
+  if(Object.keys(state.nodes).length || Object.keys(state.memos).length){
+    e.preventDefault();
+    e.returnValue='';
+  }
+});
+</script>
+</body>
+</html>
