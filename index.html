@@ -832,34 +832,42 @@ function orthoPath(from,to){
   }
   return pts.map((p,i)=>(i===0?'M ':'L ')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
 }
-// side 지정된 ortho path
+// side 지정된 ortho path — 최소 꺾임
 function orthoPathPts(from,to,p1,p2,fromSide,toSide){
   const GAP=20;
-  // 단순 접근: 시작점에서 side 방향으로 GAP만큼 나간 후, 직교로 연결
-  const ext1=extendFromSide(p1,fromSide,GAP);
-  const ext2=extendFromSide(p2,toSide,GAP);
-
-  // fromSide와 toSide의 방향 조합에 따라 중간 경로 결정
-  const isVertF = (fromSide==='top'||fromSide==='bottom');
-  const isVertT = (toSide==='top'||toSide==='bottom');
+  const isVertF=(fromSide==='top'||fromSide==='bottom');
+  const isVertT=(toSide==='top'||toSide==='bottom');
 
   let pts;
-  if(isVertF && isVertT){
-    // 둘 다 상하 → 가운데 수평선으로 연결
-    const midY=(ext1.y+ext2.y)/2;
-    pts=[p1,ext1,{x:ext1.x,y:midY},{x:ext2.x,y:midY},ext2,p2];
-  } else if(!isVertF && !isVertT){
-    // 둘 다 좌우 → 가운데 수직선으로 연결
-    const midX=(ext1.x+ext2.x)/2;
-    pts=[p1,ext1,{x:midX,y:ext1.y},{x:midX,y:ext2.y},ext2,p2];
-  } else {
-    // 하나는 상하, 하나는 좌우 → L자형
-    if(isVertF){
-      pts=[p1,ext1,{x:ext2.x,y:ext1.y},ext2,p2];
+
+  if(isVertF && !isVertT){
+    // 출발 상/하, 도착 좌/우 → L자형 1번 꺾임
+    pts=[p1, {x:p1.x, y:p2.y}, p2];
+  } else if(!isVertF && isVertT){
+    // 출발 좌/우, 도착 상/하 → L자형 1번 꺾임
+    pts=[p1, {x:p2.x, y:p1.y}, p2];
+  } else if(isVertF && isVertT){
+    // 둘 다 상/하
+    if(p1.x===p2.x){
+      // 직선
+      pts=[p1, p2];
     } else {
-      pts=[p1,ext1,{x:ext1.x,y:ext2.y},ext2,p2];
+      // 중간 Y에서 꺾기 (2번 꺾임)
+      const midY=(p1.y + p2.y)/2;
+      pts=[p1, {x:p1.x, y:midY}, {x:p2.x, y:midY}, p2];
+    }
+  } else {
+    // 둘 다 좌/우
+    if(p1.y===p2.y){
+      // 직선
+      pts=[p1, p2];
+    } else {
+      // 중간 X에서 꺾기 (2번 꺾임)
+      const midX=(p1.x + p2.x)/2;
+      pts=[p1, {x:midX, y:p1.y}, {x:midX, y:p2.y}, p2];
     }
   }
+
   return pts.map((p,i)=>(i===0?'M ':'L ')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
 }
 function extendFromSide(pt,side,gap){
